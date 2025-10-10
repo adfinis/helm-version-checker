@@ -80,7 +80,7 @@ Example `MAINTAINERS.yaml`:
 ```
 
 ## TODO
-- [] Branch and Tag Protections rules on the repo
-- [] Type Hints
-- [] PyTest framework
-- [] Automated Tests
+- [ ] Branch and Tag Protections rules on the repo
+- [ ] Type Hints
+- [ ] PyTest framework
+- [ ] Automated Tests
