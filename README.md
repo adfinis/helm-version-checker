@@ -49,7 +49,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Helm Version Checker
-        uses: adfinis/helm-version-checker@v1 # <-- Use the action here
+        uses: adfinis/helm-version-checker@v2.0.1
         with:
           # The GITHUB_TOKEN is required to create issues.
           token: ${{ secrets.GITHUB_TOKEN }}
