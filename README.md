@@ -28,40 +28,38 @@ This tool automatically checks for new Helm chart versions and creates GitHub is
 ### Inside GitHub Actions
 
 ```yaml
-name: Helm Chart Version Checker
+# .github/workflows/version-check.yml
+name: Helm Version Checker
 
 on:
   workflow_dispatch:
-
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '0 8 * * *' # Runs daily at 08:00 UTC
 
 jobs:
-  check-versions:
+  check_versions:
     name: Check for new Helm chart versions
     runs-on: ubuntu-latest
-
     permissions:
-      contents: read
-      issues: write
+      contents: read # To check out the repository's code
+      issues: write    # Required to create GitHub issues
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Run Helm Version Checker
+        uses: adfinis/helm-version-checker@v1 # <-- Use the action here
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          # The GITHUB_TOKEN is required to create issues.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: pip install -r helm-version-checker/requirements.txt
+          # --- Optional: Customize paths ---
+          # Path to the directory containing your app groups.
+          # charts_path: './charts'
 
-      - name: Run version check script
-
-        run: python helm-version-checker/version_checker.py
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Path to the maintainers file.
+          # maintainers_file: 'MAINTAINERS.yaml'
 ```
 
 ## Configure `MAINTAINERS.yaml` to assign issues
