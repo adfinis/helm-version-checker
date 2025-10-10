@@ -11,6 +11,7 @@ Requirements:
 - PyYAML:   pip install pyyaml
 """
 
+import argparse
 import os
 import sys
 import json
@@ -19,15 +20,11 @@ import requests
 import yaml
 
 # --- Configuration ---
-# GitHub repository in the format 'owner/repo'
 REPO = os.getenv("GITHUB_REPOSITORY")
-# GitHub token with permissions to read/write issues
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-# Maintainers file path
+GITHUB_TOKEN = "PLACEHOLDER"
 MAINTAINERS_FILE = "MAINTAINERS.yaml"
-# GitHub API URL
 API_URL = "https://api.github.com"
-
+CHARTS_PATH = "charts"
 
 def get_maintainers(file_path, app_group):
     """Loads maintainers from the YAML file for a specific app group."""
@@ -127,10 +124,26 @@ def create_github_issue(repo, token, title, body, assignees):
         print(f"Error creating GitHub issue '{title}': {e.response.text}", file=sys.stderr)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Helm Version Checker")
+    parser.add_argument("--token", required=True, help="GitHub token")
+    parser.add_argument("--charts-path", default="./charts", help="Path to charts directory")
+    parser.add_argument("--maintainers-file", default="MAINTAINERS.yaml", help="Path to maintainers file")
+    return parser.parse_args()
+
 def main():
-    """Main execution function."""
+    
+    args = parse_args()
+
+    GITHUB_TOKEN = args.token
+    MAINTAINERS_FILE = args.maintainers_file
+    CHARTS_PATH = args.charts_path
+    
+    
+
+
     if not REPO or not GITHUB_TOKEN:
-        print("Error: GITHUB_REPOSITORY and GITHUB_TOKEN environment variables must be set.", file=sys.stderr)
+        print("Error: GITHUB_REPOSITORY and --token argument must be set.", file=sys.stderr)
         sys.exit(1)
 
     if not Path(MAINTAINERS_FILE).is_file():
@@ -139,7 +152,7 @@ def main():
 
     print(f"Running on repository: {REPO}")
 
-    values_files = list(Path("charts").glob("*apps/values.yaml"))
+    values_files = list(Path(CHARTS_PATH).glob(f"*/values.yaml")) 
     if not values_files:
         print("No 'charts/*apps/values.yaml' files found. Exiting.")
         return
