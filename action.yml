@@ -7,19 +7,15 @@ inputs:
   token:
     description: 'The GITHUB_TOKEN to authenticate with the GitHub API.'
     required: true
-  charts-path:
+  chartspath:
     description: 'Path to the directory containing your app groups.'
     required: false
     default: './charts'
-  maintainers-file:
+  maintainersfile:
     description: 'Path to the maintainers file.'
     required: false
     default: 'MAINTAINERS.yaml'
-  values-file-name:
-    description: 'The name of the values file to check within each app group directory.'
-    required: false
-    default: 'values.yaml'
-
+    
 runs:
   using: 'docker'
   image: 'Dockerfile'
