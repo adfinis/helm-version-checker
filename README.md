@@ -78,3 +78,9 @@ Example `MAINTAINERS.yaml`:
     default:
       - 'Xelef2000'
 ```
+
+## TODO
+- [] Branch anf Tag Protections rules on the repo
+- [] Type Hints
+- [] PyTest framework
+- [] Automated Tests
