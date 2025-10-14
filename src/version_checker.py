@@ -85,7 +85,6 @@ def check_existing_issue(repo: str, token: str, title: str) -> Optional[int]:
             response.raise_for_status()
             issues: List[Dict[str, Any]] = response.json()
 
-            # Check each issue on the current page
             for issue in issues:
                 if issue.get("title") == title:
                     return issue.get("number")
@@ -175,11 +174,15 @@ def main() -> None:
             continue
 
         for name, details in apps_data.items():
+
+            if not isinstance(details, dict): # type: ignore
+                print(f"Warning: Skipping '{name}' in {value_file} because its value is not a dictionary.", file=sys.stderr)
+                continue
             
             repo_url: Optional[str] = details.get("repoURL")
-            target_revision: str = str(details.get("targetRevision", "")) # Ensure it's a string
+            target_revision: str = str(details.get("targetRevision", ""))
             chart: Optional[str] = details.get("chart")
-            repoPath: Optional[str] = details.get("chart") # Assuming repoPath is same as chart
+            repoPath: Optional[str] = details.get("chart")
 
             if not chart or not repoPath:
                 print(f"Warning: Missing 'chart' key for '{name}' in {value_file}. Skipping.")
@@ -196,7 +199,6 @@ def main() -> None:
             print(f"  -> Latest Version Available:      {latest_version}")
             print("----------------------------------------")
 
-            # --- Version comparison and issue creation ---
             if latest_version != target_revision and target_revision:
                 title: str = f"New Version Available: {name} {latest_version}"
 
