@@ -47,7 +47,7 @@ def get_maintainers(file_path: str, app_group: str) -> List[str]:
         print(f"Error reading or parsing maintainers file: {e}", file=sys.stderr)
         return []
 
-def get_latest_helm_version(repo_url: Optional[str], chart_name: str, repoPath: str) -> Optional[str]:
+def get_latest_helm_version(repo_url: Optional[str], chart_name: str) -> Optional[str]:
     """Fetches the latest chart version from a Helm repository's index.yaml."""
     if not repo_url or repo_url == "null":
         print(f"Warning: Invalid or missing repoURL for chart '{chart_name}'. Skipping.", file=sys.stderr)
@@ -178,17 +178,18 @@ def main() -> None:
             if not isinstance(details, dict): # type: ignore
                 print(f"Warning: Skipping '{name}' in {value_file} because its value is not a dictionary.", file=sys.stderr)
                 continue
-            
+
+            required_keys = {"repoURL", "chart", "targetRevision"}
+            if not required_keys.issubset(details.keys()):
+                missing_keys = required_keys - details.keys()
+                print(f"Warning: Skipping '{name}' in {value_file} due to missing keys: {', '.join(missing_keys)}", file=sys.stderr)
+                continue
+                    
             repo_url: Optional[str] = details.get("repoURL")
             target_revision: str = str(details.get("targetRevision", ""))
             chart: Optional[str] = details.get("chart")
-            repoPath: Optional[str] = details.get("chart")
 
-            if not chart or not repoPath:
-                print(f"Warning: Missing 'chart' key for '{name}' in {value_file}. Skipping.")
-                continue
-
-            latest_version: Optional[str] = get_latest_helm_version(repo_url, chart, repoPath)
+            latest_version: Optional[str] = get_latest_helm_version(repo_url, chart)
 
             if not latest_version:
                 continue
