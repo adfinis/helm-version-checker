@@ -16,22 +16,25 @@ import os
 import sys
 import json
 from pathlib import Path
+from typing import List, Optional, Dict, Any, TypedDict
 import requests
 import yaml
 
-# --- Configuration ---
-REPO = os.getenv("GITHUB_REPOSITORY")
-GITHUB_TOKEN = "PLACEHOLDER"
-MAINTAINERS_FILE = "MAINTAINERS.yaml"
-API_URL = "https://api.github.com"
-CHARTS_PATH = "charts"
+REPO: Optional[str] = os.getenv("GITHUB_REPOSITORY")
+API_URL: str = "https://api.github.com"
+CHARTS_PATH: str = "charts"
 
-def get_maintainers(file_path, app_group):
+class AppDetails(TypedDict):
+    repoURL: str
+    targetRevision: str
+    chart: str
+
+def get_maintainers(file_path: str, app_group: str) -> List[str]:
     """Loads maintainers from the YAML file for a specific app group."""
     try:
         with open(file_path, 'r') as f:
-            maintainers_data = yaml.safe_load(f)
-            assignees = maintainers_data.get(app_group, [])
+            maintainers_data: Dict[str, List[str]] = yaml.safe_load(f)
+            assignees: List[str] = maintainers_data.get(app_group, [])
             if not assignees:
                 print(f"No specific maintainers found for '{app_group}'. Looking for 'default' maintainers.")
                 assignees = maintainers_data.get('default', [])
@@ -44,19 +47,18 @@ def get_maintainers(file_path, app_group):
         print(f"Error reading or parsing maintainers file: {e}", file=sys.stderr)
         return []
 
-def get_latest_helm_version(repo_url, chart_name, repoPath):
+def get_latest_helm_version(repo_url: Optional[str], chart_name: str, repoPath: str) -> Optional[str]:
     """Fetches the latest chart version from a Helm repository's index.yaml."""
     if not repo_url or repo_url == "null":
         print(f"Warning: Invalid or missing repoURL for chart '{chart_name}'. Skipping.", file=sys.stderr)
         return None
 
-    index_url = f"{repo_url.rstrip('/')}/index.yaml"
+    index_url: str = f"{repo_url.rstrip('/')}/index.yaml"
     try:
-        response = requests.get(index_url, timeout=10)
-        response.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
-        index_data = yaml.safe_load(response.content)
-        # Extract the latest version
-        latest_version = index_data['entries'][chart_name][0]['version']
+        response: requests.Response = requests.get(index_url, timeout=10)
+        response.raise_for_status()
+        index_data: Any = yaml.safe_load(response.content)
+        latest_version: str = index_data['entries'][chart_name][0]['version']
         return latest_version
     except requests.exceptions.RequestException as e:
         print(f"Error: Failed to download index.yaml from {index_url}. Details: {e}", file=sys.stderr)
@@ -64,26 +66,24 @@ def get_latest_helm_version(repo_url, chart_name, repoPath):
         print(f"Error: Could not parse version for chart '{chart_name}' from {index_url}. Details: {e}", file=sys.stderr)
     return None
 
-def check_existing_issue(repo, token, title):
+def check_existing_issue(repo: str, token: str, title: str) -> Optional[int]:
     """
     Checks if a GitHub issue with the exact same title already exists,
     handling pagination and providing debug output.
     """
-    headers = {
+    headers: Dict[str, str] = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
     }
-    params = {"state": "open", "per_page": 100}
-    url = f"{API_URL}/repos/{repo}/issues"
+    params: Dict[str, Any] = {"state": "open", "per_page": 100}
+    url: Optional[str] = f"{API_URL}/repos/{repo}/issues"
 
-    page_num = 1
+    page_num: int = 1
     while url:
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=10)
-
+            response: requests.Response = requests.get(url, headers=headers, params=params, timeout=10)
             response.raise_for_status()
-
-            issues = response.json()
+            issues: List[Dict[str, Any]] = response.json()
 
             # Check each issue on the current page
             for issue in issues:
@@ -104,66 +104,69 @@ def check_existing_issue(repo, token, title):
 
     return None
 
-def create_github_issue(repo, token, title, body, assignees):
+def create_github_issue(repo: str, token: str, title: str, body: str, assignees: List[str]) -> None:
     """Creates a new GitHub issue."""
-    headers = {
+    headers: Dict[str, str] = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
     }
-    payload = {
+    payload: Dict[str, Any] = {
         "title": title,
         "body": body,
         "assignees": assignees
     }
-    issues_url = f"{API_URL}/repos/{repo}/issues"
+    issues_url: str = f"{API_URL}/repos/{repo}/issues"
     try:
-        response = requests.post(issues_url, headers=headers, data=json.dumps(payload), timeout=10)
+        response: requests.Response = requests.post(issues_url, headers=headers, data=json.dumps(payload), timeout=10)
         response.raise_for_status()
         print(f"Successfully created issue '{title}' and assigned to: {', '.join(assignees)}")
+
     except requests.exceptions.RequestException as e:
-        print(f"Error creating GitHub issue '{title}': {e.response.text}", file=sys.stderr)
+        if e.response is not None:
+            error_details = e.response.text
+        else:
+            error_details = str(e)
+        
+        print(f"Error creating GitHub issue '{title}': {error_details}", file=sys.stderr)
 
-
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Helm Version Checker")
     parser.add_argument("--token", required=True, help="GitHub token")
     parser.add_argument("--charts-path", default="./charts", help="Path to charts directory")
     parser.add_argument("--maintainers-file", default="MAINTAINERS.yaml", help="Path to maintainers file")
     return parser.parse_args()
 
-def main():
-    
-    args = parse_args()
+def main() -> None:
+    """Main execution function."""
+    args: argparse.Namespace = parse_args()
 
-    GITHUB_TOKEN = args.token
-    MAINTAINERS_FILE = args.maintainers_file
-    CHARTS_PATH = args.charts_path
-    
-    
+    github_token: str = args.token
+    maintainers_file_path: str = args.maintainers_file
+    charts_dir_path: str = args.charts_path
 
-
-    if not REPO or not GITHUB_TOKEN:
-        print("Error: GITHUB_REPOSITORY and --token argument must be set.", file=sys.stderr)
+    if not REPO or not github_token:
+        print("Error: GITHUB_REPOSITORY environment variable and --token argument must be set.", file=sys.stderr)
         sys.exit(1)
 
-    if not Path(MAINTAINERS_FILE).is_file():
-        print(f"Error: {MAINTAINERS_FILE} not found in the repository root.", file=sys.stderr)
+    if not Path(maintainers_file_path).is_file():
+        print(f"Error: {maintainers_file_path} not found.", file=sys.stderr)
         sys.exit(1)
 
     print(f"Running on repository: {REPO}")
 
-    values_files = list(Path(CHARTS_PATH).glob(f"*/values.yaml")) 
+    values_files: List[Path] = list(Path(charts_dir_path).glob("*/values.yaml"))
     if not values_files:
-        print("No 'charts/*apps/values.yaml' files found. Exiting.")
+        print(f"No 'values.yaml' files found in subdirectories of '{charts_dir_path}'. Exiting.")
         return
 
     for value_file in values_files:
         print(f"\n--- Processing file: {value_file} ---")
-        app_group = value_file.parent.name
+        app_group: str = value_file.parent.name
 
         try:
             with open(value_file, 'r') as f:
-                apps_data = yaml.safe_load(f)
+                apps_data: Optional[Dict[str, AppDetails]] = yaml.safe_load(f)
         except Exception as e:
             print(f"Error reading or parsing YAML file {value_file}: {e}", file=sys.stderr)
             continue
@@ -172,17 +175,17 @@ def main():
             continue
 
         for name, details in apps_data.items():
+            
+            repo_url: Optional[str] = details.get("repoURL")
+            target_revision: str = str(details.get("targetRevision", "")) # Ensure it's a string
+            chart: Optional[str] = details.get("chart")
+            repoPath: Optional[str] = details.get("chart") # Assuming repoPath is same as chart
 
-            if not isinstance(details, dict):
+            if not chart or not repoPath:
+                print(f"Warning: Missing 'chart' key for '{name}' in {value_file}. Skipping.")
                 continue
 
-            repo_url = details.get("repoURL")
-            target_revision = str(details.get("targetRevision", "")) # Ensure it's a string
-            chart = details.get("chart")
-            repoPath = details.get("chart")
-
-
-            latest_version = get_latest_helm_version(repo_url, chart, repoPath)
+            latest_version: Optional[str] = get_latest_helm_version(repo_url, chart, repoPath)
 
             if not latest_version:
                 continue
@@ -194,20 +197,20 @@ def main():
             print("----------------------------------------")
 
             # --- Version comparison and issue creation ---
-            if latest_version != target_revision and latest_version and target_revision:
-                title = f"New Version Available: {name} {latest_version}"
+            if latest_version != target_revision and target_revision:
+                title: str = f"New Version Available: {name} {latest_version}"
 
-                existing_issue_number = check_existing_issue(REPO, GITHUB_TOKEN, title)
+                existing_issue_number: Optional[int] = check_existing_issue(REPO, github_token, title)
 
                 if not existing_issue_number:
                     print(f"Found new version for {name}! Creating issue...")
 
-                    assignees = get_maintainers(MAINTAINERS_FILE, app_group)
+                    assignees: List[str] = get_maintainers(maintainers_file_path, app_group)
 
                     if assignees:
                         print(f"Found maintainers for '{app_group}': {', '.join(assignees)}")
 
-                    body = (
+                    body: str = (
                         f"New version available for **{name}**!\n\n"
                         f"Current `targetRevision` set: `{target_revision}`\n"
                         f"New version available: `{latest_version}`\n\n"
@@ -216,12 +219,11 @@ def main():
                         "Thanks."
                     )
 
-                    create_github_issue(REPO, GITHUB_TOKEN, title, body, assignees)
+                    create_github_issue(REPO, github_token, title, body, assignees)
                 else:
                     print(f"Issue #{existing_issue_number} for '{title}' already exists. Skipping.")
 
     print("\nScript finished.")
-
 
 if __name__ == "__main__":
     main()
