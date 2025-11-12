@@ -1,0 +1,5 @@
+# Testing
+pytest==8.4.2
+pytest-cov==7.0.0
+requests-mock==1.12.1
+pyfakefs==5.10.0
