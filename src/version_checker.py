@@ -289,6 +289,7 @@ def main() -> None:
                         f"New version available: `{latest_version}`\n\n"
                         f"Please consider creating a PR to update the `targetRevision` in this file: "
                         f"[{value_file}](https://github.com/{REPO}/blob/main/{value_file})\n\n"
+                        "Remember to check the upstream chart for updated (or more stable) versions than the one mentioned while you address this ticket.\n\n"
                         "Thanks."
                     )
 
