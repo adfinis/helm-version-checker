@@ -9,7 +9,7 @@ This tool automatically checks for new Helm chart versions and creates GitHub is
 1. **Install Dependencies**:
 
     ```bash
-    pip install -r scripts/requirements.txt
+    pip install -r requirements.txt
     ```
 
 2. **Set Environment Variables**: The script requires two **environment variables** to function correctly.
@@ -20,7 +20,7 @@ This tool automatically checks for new Helm chart versions and creates GitHub is
 3. **Run the Script**: Execute the script from the root of the repository.
 
     ```bash
-    GITHUB_REPOSITORY="owner/repo" GITHUB_TOKEN="your_personal_access_token" python scripts/version_checker.py
+    GITHUB_REPOSITORY="owner/repo" GITHUB_TOKEN="your_personal_access_token" python src/version_checker.py
     ```
 
 -----
