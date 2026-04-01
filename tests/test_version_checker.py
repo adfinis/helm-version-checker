@@ -57,7 +57,22 @@ def cert_manager_index() -> str:
 apiVersion: v1
 entries:
   cert-manager:
-  - apiVersion: v2
+  - annotations:
+      artifacthub.io/prerelease: "true"
+    apiVersion: v2
+    appVersion: v1.20.0-beta.0
+    created: "2026-02-27T21:07:35.859858964Z"
+    description: A Helm chart for cert-manager
+    digest: 1d04f4a4d44a481b78250bfebd35f4279cf92631c88731ef03d6d7d619037a56
+    name: cert-manager
+    sources:
+    - https://github.com/cert-manager/cert-manager
+    urls:
+    - charts/cert-manager-v1.20.0-beta.0.tgz
+    version: v1.20.0-beta.0
+  - annotations:
+      artifacthub.io/prerelease: "false"
+    apiVersion: v2
     appVersion: v1.19.1
     created: "2025-10-15T14:58:20.519585686Z"
     description: A Helm chart for cert-manager
@@ -65,7 +80,9 @@ entries:
     urls:
     - charts/cert-manager-v1.19.1.tgz
     version: v1.19.1
-  - apiVersion: v2
+  - annotations:
+      artifacthub.io/prerelease: "false"
+    apiVersion: v2
     appVersion: v1.18.2
     created: "2025-07-02T12:13:05.061182646Z"
     description: A Helm chart for cert-manager

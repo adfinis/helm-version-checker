@@ -65,8 +65,18 @@ def get_latest_helm_version(repo_url: Optional[str], chart_name: str) -> Optiona
         response: requests.Response = requests.get(index_url, timeout=10)
         response.raise_for_status()
         index_data: Any = yaml.safe_load(response.content)
-        latest_version: str = index_data["entries"][chart_name][0]["version"]
-        return latest_version
+        # Loop through releases until we find the first release that is not marked as a prerelease
+        for release in index_data["entries"][chart_name]:
+            if (
+                # This will return None for releases without the prerelease annotation present, ensuring that the if is false and we enter the else statement marking it as the latest version
+                release.get("annotations", {}).get("artifacthub.io/prerelease")
+                == "true"
+            ):
+                # This release is a prerelease, so we're going to skip it and continue with the next release in the list
+                continue
+            else:
+                latest_version: str = release["version"]
+                return latest_version
     except requests.exceptions.RequestException as e:
         print(
             f"Error: Failed to download index.yaml from {index_url}. Details: {e}",
