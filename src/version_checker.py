@@ -14,7 +14,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, Set, TypedDict
 
 import requests
 import yaml
@@ -28,6 +28,39 @@ class AppDetails(TypedDict):
     repoURL: str
     targetRevision: str
     chart: str
+
+
+def get_deprecated_apps(value_file: Path) -> Set[str]:
+    """Finds top-level app entries documented as deprecated in YAML comments."""
+    deprecated_apps: Set[str] = set()
+    comment_block: List[str] = []
+
+    try:
+        with open(value_file) as f:
+            for line in f:
+                stripped_line = line.strip()
+
+                if stripped_line.startswith("#"):
+                    comment_block.append(stripped_line.lower())
+                    continue
+
+                if not stripped_line:
+                    comment_block = []
+                    continue
+
+                if not line.startswith((" ", "\t")) and stripped_line.endswith(":"):
+                    app_name = stripped_line[:-1]
+                    if any("deprecated" in comment for comment in comment_block):
+                        deprecated_apps.add(app_name)
+
+                comment_block = []
+    except Exception as e:
+        print(
+            f"Warning: Could not read deprecated app comments from {value_file}: {e}",
+            file=sys.stderr,
+        )
+
+    return deprecated_apps
 
 
 def get_maintainers(file_path: str, app_group: str) -> List[str]:
@@ -225,6 +258,7 @@ def main() -> None:
     for value_file in values_files:
         print(f"\n--- Processing file: {value_file} ---")
         app_group: str = value_file.parent.name
+        deprecated_apps: Set[str] = get_deprecated_apps(value_file)
 
         try:
             with open(value_file) as f:
@@ -240,6 +274,10 @@ def main() -> None:
             continue
 
         for name, details in apps_data.items():
+            if name in deprecated_apps:
+                print(f"Skipping deprecated app: {name} (from {app_group})")
+                continue
+
             if not isinstance(details, dict):  # type: ignore
                 print(
                     f"Warning: Skipping '{name}' in {value_file} because its value is not a dictionary.",

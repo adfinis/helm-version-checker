@@ -143,6 +143,39 @@ def test_get_maintainers_file_not_found(capsys):
     assert "Error: Maintainers file not found" in captured.err
 
 
+def test_get_deprecated_apps_finds_top_level_deprecated_comments(tmp_path: Path):
+    values_file = tmp_path / "values.yaml"
+    values_file.write_text(
+        """
+# -- [Barman](https://github.com/EnterpriseDB/barman)
+# @default -- [example](./examples/barman.yaml)
+barman:
+  enabled: true
+
+# -- [Back8sup](https://github.com/adfinis/back8sup) is DEPRECATED, use "Velero" instead
+# @default -- DEPRECATED
+back8sup:
+  enabled: false
+"""
+    )
+
+    assert version_checker.get_deprecated_apps(values_file) == {"back8sup"}
+
+
+def test_get_deprecated_apps_ignores_nested_deprecated_comments(tmp_path: Path):
+    values_file = tmp_path / "values.yaml"
+    values_file.write_text(
+        """
+activeApp:
+  enabled: true
+  # -- This nested value mentions DEPRECATED but the app is not deprecated.
+  values: {}
+"""
+    )
+
+    assert version_checker.get_deprecated_apps(values_file) == set()
+
+
 def test_get_latest_helm_version_success(requests_mock, cert_manager_index):
     """Tests a successful fetch of a chart version."""
     url = "https://charts.jetstack.io/index.yaml"
@@ -389,3 +422,63 @@ def test_main_full_run(
     
     # Assert create_github_issue was ONLY called once (for certManager)
     assert mock_create_issue.call_count == 1
+
+
+@patch("version_checker.create_github_issue")
+@patch("version_checker.check_existing_issue")
+@patch("version_checker.get_latest_helm_version")
+def test_main_skips_deprecated_apps(
+    mock_get_version: MagicMock,
+    mock_check_issue: MagicMock,
+    mock_create_issue: MagicMock,
+    fs: FakeFilesystem,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    fs.create_file("MAINTAINERS.yaml", contents=MAINTAINERS_CONTENT)
+    fs.create_file(
+        "charts/backup-apps/values.yaml",
+        contents="""
+# -- [Barman](https://github.com/EnterpriseDB/barman)
+barman:
+  enabled: true
+  repoURL: https://charts.adfinis.com
+  chart: barman
+  targetRevision: "0.10.0"
+
+# -- [Back8sup](https://github.com/adfinis/back8sup) is DEPRECATED, use "Velero" instead
+# @default -- DEPRECATED
+back8sup:
+  enabled: false
+  repoURL: https://charts.adfinis.com
+  chart: back8sup
+  targetRevision: "0.5.0"
+""",
+    )
+
+    monkeypatch.setenv("GITHUB_REPOSITORY", "test-owner/test-repo")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "script_name",
+            "--token",
+            "fake-token",
+            "--charts-path",
+            "charts",
+            "--maintainers-file",
+            "MAINTAINERS.yaml",
+        ],
+    )
+
+    version_checker.REPO = "test-owner/test-repo"
+    mock_get_version.return_value = "0.11.0"
+    mock_check_issue.return_value = None
+
+    version_checker.main()
+
+    captured = capsys.readouterr()
+    assert "Skipping deprecated app: back8sup (from backup-apps)" in captured.out
+    mock_get_version.assert_called_once_with("https://charts.adfinis.com", "barman")
+    mock_check_issue.assert_called_once()
+    mock_create_issue.assert_called_once()
