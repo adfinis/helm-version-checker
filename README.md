@@ -62,6 +62,20 @@ jobs:
           # maintainers_file: 'MAINTAINERS.yaml'
 ```
 
+## Deprecated apps
+
+Apps marked as deprecated in the comment block directly above a top-level
+`values.yaml` entry are ignored by the version checker:
+
+```yaml
+# -- This app is DEPRECATED, use another app instead
+# @default -- DEPRECATED
+oldApp:
+  repoURL: https://charts.example.com
+  chart: old-app
+  targetRevision: "1.2.3"
+```
+
 ## Configure `MAINTAINERS.yaml` to assign issues
 
 This file, located in your repository's root, maps chart groups to GitHub usernames. Keys must match the *apps names inside your `charts/` directory (e.g., `monitoring-apps`). Use `default` as a fallback.
